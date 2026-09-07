@@ -11,7 +11,8 @@ export async function POST() {
     });
   } catch (error: unknown) {
     console.error('Seed API error:', error);
-    return NextResponse.json({ error: 'Failed to seed database' }, { status: 500 });
+    const details = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: 'Failed to seed database', details }, { status: 500 });
   }
 }
 

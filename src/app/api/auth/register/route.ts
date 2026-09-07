@@ -7,25 +7,34 @@ export async function POST(req: NextRequest) {
     const { name, email, password, title, department } = await req.json();
 
     if (!name || !email || !password) {
-      return NextResponse.json({ error: 'Name, email and password are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 });
     }
 
+    if (password.length < 6) {
+      return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+
     const existing = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: { email: cleanEmail },
     });
 
     if (existing) {
-      return NextResponse.json({ error: 'A user with this email already exists' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'An account with this email already exists. Please log in or use a different email.' },
+        { status: 400 }
+      );
     }
 
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
       data: {
         name: name.trim(),
-        email: email.toLowerCase().trim(),
+        email: cleanEmail,
         passwordHash,
-        title: title || 'Team Member',
-        department: department || 'Engineering',
+        title: title?.trim() || 'Team Member',
+        department: department?.trim() || 'Engineering',
         role: 'MEMBER',
       },
       select: {
@@ -58,6 +67,7 @@ export async function POST(req: NextRequest) {
     return response;
   } catch (error: unknown) {
     console.error('Registration error:', error);
-    return NextResponse.json({ error: 'Failed to create user account' }, { status: 500 });
+    const errMsg = error instanceof Error ? error.message : 'Database error';
+    return NextResponse.json({ error: `Failed to create user account: ${errMsg}` }, { status: 500 });
   }
 }
